@@ -13,7 +13,8 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: "123456"
+      # Redis 有密码时用环境变量 REDIS_PASSWORD 覆盖；没有密码留空即可
+      password: ${REDIS_PASSWORD:}
       lettuce: #redis连接池
         pool:
           max-active: 10  #最大连接数
@@ -78,5 +79,7 @@ mybatis-plus:
 # 日志级别
 logging:
   level:
-    com.li.campuslife: info    #debug
+    com.li.campuslife: info
+    # 开发时想在控制台看登录验证码，单独把发码的类开到 debug
+    com.li.campuslife.service.impl.UserServiceImpl: debug
     org.springframework.amqp: info # rabbitmq相关框架日志级别

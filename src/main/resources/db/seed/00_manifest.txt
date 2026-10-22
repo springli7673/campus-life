@@ -1,0 +1,17 @@
+campus-life seed  manifest
+generated: 2026-10-20 22:19:10
+seed: 20261020
+
+tb_campus                   3
+tb_shop_type               12
+tb_user                  5000
+tb_shop                   240
+tb_voucher                150
+tb_seckill_voucher         40
+tb_blog                  1200
+tb_blog_comments         3000
+tb_follow               30000
+tb_user_info             5000
+tb_sign                 40000
+tb_voucher_order         8000
+TOTAL                   92645
