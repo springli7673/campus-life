@@ -20,13 +20,21 @@ public class ReconcileLog {
     private Long id;
 
     private Long voucherId;
-    /** DB 中未取消的订单数 */
+    /**
+     * DB 中未取消的订单数
+     */
     private Integer dbSold;
-    /** 对账时刻 Redis 中的库存 */
+    /**
+     * 对账时刻 Redis 中的库存
+     */
     private Integer redisStock;
-    /** redisStock - dbStock */
+    /**
+     * redisStock - dbStock
+     */
     private Integer diff;
-    /** 差异明细（占位集合多出/缺失的用户、修复动作） */
+    /**
+     * 差异明细（占位集合多出/缺失的用户、修复动作）
+     */
     private String detail;
     private LocalDateTime createTime;
 }

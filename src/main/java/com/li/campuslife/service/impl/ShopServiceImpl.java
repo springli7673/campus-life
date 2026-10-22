@@ -93,7 +93,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return Result.ok(pageOf(shops, current, "distance"));
     }
 
-    /** 用校区中心算直线距离（Haversine），商户只有 240 家，直接在内存里算比拼 Redis Geo 简单 */
+    /**
+     * 用校区中心算直线距离（Haversine），商户只有 240 家，直接在内存里算比拼 Redis Geo 简单
+     */
     private void fillDistance(List<Shop> shops, Campus campus) {
         if (campus == null || campus.getLatitude() == null || campus.getLongitude() == null) {
             return;

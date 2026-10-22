@@ -24,7 +24,9 @@ public class OrderException {
     private Long voucherId;
     private String reason;
     private String payload;
-    /** 0 OPEN / 1 REPAIRED / 2 IGNORED */
+    /**
+     * 0 OPEN / 1 REPAIRED / 2 IGNORED
+     */
     private Integer status;
     private Integer retryCount;
     private LocalDateTime createTime;

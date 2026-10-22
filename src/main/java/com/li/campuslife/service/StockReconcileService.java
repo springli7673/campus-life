@@ -30,7 +30,9 @@ public class StockReconcileService {
 
     private static final Logger log = LoggerFactory.getLogger(StockReconcileService.class);
 
-    /** 只有当前值仍等于观测值时才覆盖，防止并发预扣被踩掉 */
+    /**
+     * 只有当前值仍等于观测值时才覆盖，防止并发预扣被踩掉
+     */
     private static final DefaultRedisScript<Long> CAS_SET_SCRIPT;
 
     static {
@@ -39,7 +41,9 @@ public class StockReconcileService {
         CAS_SET_SCRIPT.setResultType(Long.class);
     }
 
-    /** 上一轮观测到的差异（单实例内存；多实例部署需要换成 Redis 记录） */
+    /**
+     * 上一轮观测到的差异（单实例内存；多实例部署需要换成 Redis 记录）
+     */
     private final Map<Long, Observation> pending = new ConcurrentHashMap<>();
 
     private record Observation(int redisStock, Set<String> stray, Set<String> missing) {
@@ -156,7 +160,9 @@ public class StockReconcileService {
                 List.copyOf(stray), List.copyOf(missing), true, "已修复");
     }
 
-    /** DB 中该券所有未取消订单的用户 */
+    /**
+     * DB 中该券所有未取消订单的用户
+     */
     private Set<String> validOrderUsers(long voucherId) {
         List<Object> ids = voucherOrderService.listObjs(new QueryWrapper<VoucherOrder>()
                 .select("user_id")

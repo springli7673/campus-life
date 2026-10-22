@@ -49,13 +49,17 @@ public class SeckillRateLimiter {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
-    /** 整个活动的入口 QPS 上限 */
+    /**
+     * 整个活动的入口 QPS 上限
+     */
     public boolean allowActivity(long voucherId) {
         return tryAcquire(RedisConstants.SECKILL_RATE_LIMIT_KEY + "activity:" + voucherId,
                 activityPermits, activityWindowSeconds);
     }
 
-    /** 单个用户对单张券的请求频率上限（正常用户不会连续点） */
+    /**
+     * 单个用户对单张券的请求频率上限（正常用户不会连续点）
+     */
     public boolean allowUser(long voucherId, long userId) {
         return tryAcquire(RedisConstants.SECKILL_RATE_LIMIT_KEY + "user:" + voucherId + ":" + userId,
                 userPermits, userWindowSeconds);

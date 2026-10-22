@@ -22,6 +22,8 @@ public interface IShopService extends IService<Shop> {
      */
     Result queryShopByType(Integer typeId, Integer current, String sortBy, Long campusId);
 
-    /** 关键词搜索商户名、地址、商圈 */
+    /**
+     * 关键词搜索商户名、地址、商圈
+     */
     Result search(String keyword, Long campusId, Integer current);
 }

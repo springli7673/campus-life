@@ -14,7 +14,9 @@ public class ProfileDTO {
     private String icon;
     private String introduce;
     private String city;
-    /** true 女，false 男，null 表示不修改 */
+    /**
+     * true 女，false 男，null 表示不修改
+     */
     private Boolean gender;
     private LocalDate birthday;
 }

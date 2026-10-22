@@ -35,13 +35,19 @@ public class AdminController {
     @Resource
     private IReconcileLogService reconcileLogService;
 
-    /** 预热秒杀券到 Redis；force=true 覆盖库存（重置演示用） */
+    /**
+     * 预热秒杀券到 Redis；force=true 覆盖库存（重置演示用）
+     * @param force
+     * @return
+     */
     @PostMapping("/preheat")
     public Result preheat(@RequestParam(defaultValue = "false") boolean force) {
         return Result.ok(Map.of("vouchers", preheatService.preheat(force)));
     }
 
-    /** 立即对账；repair=true 时跳过"两次观测"直接修复 */
+    /**
+     * 立即对账；repair=true 时跳过"两次观测"直接修复
+     */
     @GetMapping("/reconcile")
     public Result reconcile(@RequestParam(defaultValue = "false") boolean repair) {
         List<ReconcileResult> items = stockReconcileService.reconcileAll(repair);
@@ -54,7 +60,9 @@ public class AdminController {
                 "items", items));
     }
 
-    /** 对账日志（只在发现差异时写入） */
+    /**
+     * 对账日志（只在发现差异时写入）
+     */
     @GetMapping("/reconcile/logs")
     public Result reconcileLogs(@RequestParam(defaultValue = "50") Integer limit) {
         int size = Math.min(Math.max(limit == null ? 50 : limit, 1), 200);
@@ -63,7 +71,9 @@ public class AdminController {
                 .last("limit " + size)));
     }
 
-    /** 查看异常订单，默认只看 OPEN */
+    /**
+     * 查看异常订单，默认只看 OPEN
+     */
     @GetMapping("/exception")
     public Result exceptions(@RequestParam(defaultValue = "0") Integer status) {
         List<OrderException> list = orderExceptionService.list(new QueryWrapper<OrderException>()
@@ -73,7 +83,9 @@ public class AdminController {
         return Result.ok(list);
     }
 
-    /** 人工重投一条异常订单 */
+    /**
+     * 人工重投一条异常订单
+     */
     @PostMapping("/exception/{orderId}/retry")
     public Result retry(@PathVariable Long orderId) {
         OrderException exception = orderExceptionService.getOne(

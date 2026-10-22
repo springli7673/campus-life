@@ -37,7 +37,9 @@ public class OrderRecoveryService {
         this.orderExceptionService = orderExceptionService;
     }
 
-    /** 回滚 Redis 预扣并登记异常（订单未落库时使用） */
+    /**
+     * 回滚 Redis 预扣并登记异常（订单未落库时使用）
+     */
     public void rollbackAndRecord(long orderId, long userId, long voucherId, String reason, String payload) {
         try {
             stringRedisTemplate.execute(ROLLBACK_SCRIPT, Collections.emptyList(),
@@ -49,7 +51,9 @@ public class OrderRecoveryService {
         orderExceptionService.record(orderId, userId, voucherId, reason, payload);
     }
 
-    /** 只回补 Redis 库存并释放占位（关单时使用） */
+    /**
+     * 只回补 Redis 库存并释放占位（关单时使用）
+     */
     public void releaseRedisStock(long orderId, long userId, long voucherId, String reason) {
         try {
             stringRedisTemplate.execute(ROLLBACK_SCRIPT, Collections.emptyList(),
