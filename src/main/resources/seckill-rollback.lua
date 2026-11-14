@@ -1,3 +1,6 @@
+-- 库存回滚脚本
+
+
 -- 投递失败时回滚预扣
 -- ARGV[1] voucherId, ARGV[2] userId
 redis.call('incrby', 'seckill:stock:' .. ARGV[1], 1)

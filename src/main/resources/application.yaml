@@ -76,10 +76,18 @@ mybatis-plus:
   type-aliases-package: com.li.campuslife.entity
   configuration:
     map-underscore-to-camel-case: true # 开启下划线转驼峰
-# 日志级别
+# 日志
 logging:
+  file:
+    # 控制台照常输出，同时写一份到文件；相对路径基于启动时的工作目录（IDEA 下一般是项目根目录）
+    name: logs/campus-life.log
+  logback:
+    rollingpolicy:
+      max-file-size: 20MB # 单个日志文件上限，超过后滚动
+      max-history: 7 # 保留 7 天
   level:
-    com.li.campuslife: info
+    com.li.campuslife: debug
     # 开发时想在控制台看登录验证码，单独把发码的类开到 debug
-    com.li.campuslife.service.impl.UserServiceImpl: debug
+#    com.li.campuslife.service.impl.UserServiceImpl: debug
+    com.li.campuslife.mapper: info   # SQL 日志关掉，只留业务/秒杀/MQ
     org.springframework.amqp: info # rabbitmq相关框架日志级别
