@@ -12,6 +12,5 @@ tb_blog                  1200
 tb_blog_comments         3000
 tb_follow               30000
 tb_user_info             5000
-tb_sign                 40000
 tb_voucher_order         8000
-TOTAL                   92645
+TOTAL                   52645

@@ -150,20 +150,7 @@ CREATE TABLE `tb_follow` (
   UNIQUE INDEX `uk_user_follow`(`user_id`,`follow_user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='关注';
 
--- 2.8 签到
-DROP TABLE IF EXISTS `tb_sign`;
-CREATE TABLE `tb_sign` (
-  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `user_id` bigint(20) UNSIGNED NOT NULL COMMENT '用户id',
-  `year` year NOT NULL COMMENT '年',
-  `month` tinyint(2) NOT NULL COMMENT '月',
-  `date` date NOT NULL COMMENT '日期',
-  `is_backup` tinyint(1) UNSIGNED NULL DEFAULT NULL COMMENT '是否补签',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_user_date`(`user_id`,`date`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='签到';
-
--- 2.9 优惠券
+-- 2.8 优惠券
 DROP TABLE IF EXISTS `tb_voucher`;
 CREATE TABLE `tb_voucher` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -181,7 +168,7 @@ CREATE TABLE `tb_voucher` (
   INDEX `idx_shop`(`shop_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='优惠券';
 
--- 2.10 秒杀券（修正了原表 0000-00-00 的默认值，MySQL 8 严格模式会报错）
+-- 2.9 秒杀券（修正了原表 0000-00-00 的默认值，MySQL 8 严格模式会报错）
 DROP TABLE IF EXISTS `tb_seckill_voucher`;
 CREATE TABLE `tb_seckill_voucher` (
   `voucher_id` bigint(20) UNSIGNED NOT NULL COMMENT '优惠券id',
@@ -193,7 +180,7 @@ CREATE TABLE `tb_seckill_voucher` (
   PRIMARY KEY (`voucher_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='秒杀券';
 
--- 2.11 订单：唯一索引（一人一单的最终约束）+ cancel_time + 关单扫描索引
+-- 2.10 订单：唯一索引（一人一单的最终约束）+ cancel_time + 关单扫描索引
 DROP TABLE IF EXISTS `tb_voucher_order`;
 CREATE TABLE `tb_voucher_order` (
   `id` bigint(20) NOT NULL COMMENT '主键（RedisIdWorker 生成）',

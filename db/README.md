@@ -6,9 +6,9 @@ MySQL 8.0，库名 `campus_life`，字符集 `utf8mb4`。
 
 | 路径 | 作用 |
 |---|---|
-| `schema/campus_life_schema.sql` | 建库 + 14 张表 |
-| `seed/01` ~ `seed/12` | 基础种子数据（约 9.2 万行），按编号顺序执行 |
-| `seed/00_manifest.txt` | 01~12 各表行数清单 |
+| `schema/campus_life_schema.sql` | 建库 + 13 张表 |
+| `seed/01` ~ `seed/12`（无 11） | 基础种子数据（约 5.3 万行），按编号顺序执行 |
+| `seed/00_manifest.txt` | 01~10、12 各表行数清单 |
 | `demo/13_demo_vouchers.sql` | 可选。演示用的补充券：给每家商户补券、把秒杀活动窗口开到 2029-01-01 |
 
 ## 导入顺序
@@ -17,7 +17,7 @@ MySQL 8.0，库名 `campus_life`，字符集 `utf8mb4`。
 # 1. 建表
 mysql -uroot -p < db/schema/campus_life_schema.sql
 
-# 2. 基础数据（按编号 01 -> 12）
+# 2. 基础数据（按编号 01 -> 10、12）
 mysql -uroot -p campus_life < db/seed/01_campus.sql
 mysql -uroot -p campus_life < db/seed/02_shop_type.sql
 mysql -uroot -p campus_life < db/seed/03_user.sql
@@ -28,7 +28,6 @@ mysql -uroot -p campus_life < db/seed/07_blog.sql
 mysql -uroot -p campus_life < db/seed/08_blog_comments.sql
 mysql -uroot -p campus_life < db/seed/09_follow.sql
 mysql -uroot -p campus_life < db/seed/10_user_info.sql
-mysql -uroot -p campus_life < db/seed/11_sign.sql
 mysql -uroot -p campus_life < db/seed/12_voucher_order.sql
 
 # 3. 可选：演示数据（建议本地演示/测试时执行）
