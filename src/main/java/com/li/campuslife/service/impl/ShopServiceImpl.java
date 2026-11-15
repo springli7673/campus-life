@@ -6,6 +6,7 @@ import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Campus;
 import com.li.campuslife.entity.Shop;
 import com.li.campuslife.mapper.ShopMapper;
+import com.li.campuslife.mq.ShopChangeProducer;
 import com.li.campuslife.service.ICampusService;
 import com.li.campuslife.service.IShopService;
 import com.li.campuslife.utils.CacheClient;
@@ -14,6 +15,8 @@ import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +41,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     @Resource
     private ICampusService campusService;
 
+    @Resource
+    private ShopChangeProducer shopChangeProducer;
+
     @Override
     public Result queryById(Long id) {
         // 切换这一行即可切换方案
@@ -56,6 +62,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     @Transactional
+    public Result saveShop(Shop shop) {
+        save(shop);
+        sendChangeAfterCommit(shop.getId());
+        return Result.ok(shop.getId());
+    }
+
+    @Override
+    @Transactional
     public Result update(Shop shop) {
         Long id = shop.getId();
         if (id == null) {
@@ -64,7 +78,27 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         // 先更新数据库，再删除缓存 Cache-Aside
         updateById(shop);
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+        sendChangeAfterCommit(id);
         return Result.ok();
+    }
+
+    /**
+     * 事务提交后再发 MQ，避免消费者读不到刚写入的数据。
+     */
+    private void sendChangeAfterCommit(Long shopId) {
+        if (shopId == null) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    shopChangeProducer.send(shopId);
+                }
+            });
+        } else {
+            shopChangeProducer.send(shopId);
+        }
     }
 
     @Override

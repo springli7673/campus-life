@@ -33,6 +33,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+<!--        elasticsearch（客户端版本跟 Boot BOM 走，不单独钉）-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
 <!--        rabbitmq-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

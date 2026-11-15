@@ -59,4 +59,42 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderDlq()).to(orderDlxExchange())
                 .with(MqNames.ORDER_DLQ_ROUTING_KEY);
     }
+
+    /**
+     * 商户变更 -> ES 同步队列；消费失败进 campus.shop.es.dlq
+     */
+    @Bean
+    public DirectExchange shopChangeExchange() {
+        return new DirectExchange(MqNames.SHOP_CHANGE_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public DirectExchange shopEsDlxExchange() {
+        return new DirectExchange(MqNames.SHOP_ES_DLX_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue shopEsSyncQueue() {
+        return QueueBuilder.durable(MqNames.SHOP_ES_SYNC_QUEUE)
+                .deadLetterExchange(MqNames.SHOP_ES_DLX_EXCHANGE)
+                .deadLetterRoutingKey(MqNames.SHOP_ES_DLQ_ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    public Queue shopEsDlq() {
+        return QueueBuilder.durable(MqNames.SHOP_ES_DLQ).build();
+    }
+
+    @Bean
+    public Binding shopEsSyncBinding() {
+        return BindingBuilder.bind(shopEsSyncQueue()).to(shopChangeExchange())
+                .with(MqNames.SHOP_ES_SYNC_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding shopEsDlqBinding() {
+        return BindingBuilder.bind(shopEsDlq()).to(shopEsDlxExchange())
+                .with(MqNames.SHOP_ES_DLQ_ROUTING_KEY);
+    }
 }

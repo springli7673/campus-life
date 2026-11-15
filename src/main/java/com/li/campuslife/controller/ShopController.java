@@ -4,6 +4,8 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Shop;
+import com.li.campuslife.search.ShopSearchReq;
+import com.li.campuslife.search.ShopSearchService;
 import com.li.campuslife.service.IShopService;
 import com.li.campuslife.utils.SystemConstants;
 import jakarta.annotation.Resource;
@@ -20,6 +22,9 @@ public class ShopController {
 
     @Resource
     public IShopService shopService;
+
+    @Resource
+    private ShopSearchService shopSearchService;
 
     /**
      * 根据id查询商铺信息
@@ -38,10 +43,8 @@ public class ShopController {
      */
     @PostMapping
     public Result saveShop(@RequestBody Shop shop) {
-        // 写入数据库
-        shopService.save(shop);
-        // 返回店铺id
-        return Result.ok(shop.getId());
+        // 写库 + 事务提交后投递 ES 同步消息
+        return shopService.saveShop(shop);
     }
 
     /**
@@ -83,6 +86,39 @@ public class ShopController {
             @RequestParam(value = "current", defaultValue = "1") Integer current
     ) {
         return shopService.search(keyword, campusId, current);
+    }
+
+    /**
+     * ES 版检索：支持关键词、类型、校区、价格区间、距离、排序、聚合和高亮。
+     * ES 不可用时自动降级到 DB，响应体 degraded=true。
+     */
+    @GetMapping("/search/v2")
+    public Result searchV2(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "campusId", required = false) Long campusId,
+            @RequestParam(value = "typeId", required = false) Long typeId,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "20") Integer size,
+            @RequestParam(value = "sortBy", defaultValue = "comprehensive") String sortBy,
+            @RequestParam(value = "lat", required = false) Double lat,
+            @RequestParam(value = "lon", required = false) Double lon,
+            @RequestParam(value = "radius", defaultValue = "5km") String radius,
+            @RequestParam(value = "minPrice", required = false) Long minPrice,
+            @RequestParam(value = "maxPrice", required = false) Long maxPrice
+    ) {
+        ShopSearchReq req = new ShopSearchReq();
+        req.setKeyword(keyword);
+        req.setCampusId(campusId);
+        req.setTypeId(typeId);
+        req.setPage(page);
+        req.setSize(size);
+        req.setSortBy(sortBy);
+        req.setLat(lat);
+        req.setLon(lon);
+        req.setRadius(radius);
+        req.setMinPrice(minPrice);
+        req.setMaxPrice(maxPrice);
+        return Result.ok(shopSearchService.search(req));
     }
 
     /**

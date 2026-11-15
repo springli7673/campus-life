@@ -13,6 +13,11 @@ public interface IShopService extends IService<Shop> {
 
     Result queryById(Long id);
 
+    /**
+     * 新增商户，事务提交后投递 ES 同步消息。
+     */
+    Result saveShop(Shop shop);
+
     Result update(Shop shop);
 
     /**
