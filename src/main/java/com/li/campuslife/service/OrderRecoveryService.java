@@ -2,6 +2,8 @@ package com.li.campuslife.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.li.campuslife.entity.OrderException;
+import com.li.campuslife.mq.SeckillOrderMessage;
+import com.li.campuslife.mq.SeckillOrderProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -30,11 +32,14 @@ public class OrderRecoveryService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final IOrderExceptionService orderExceptionService;
+    private final SeckillOrderProducer seckillOrderProducer;
 
     public OrderRecoveryService(StringRedisTemplate stringRedisTemplate,
-                                IOrderExceptionService orderExceptionService) {
+                                IOrderExceptionService orderExceptionService,
+                                SeckillOrderProducer seckillOrderProducer) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.orderExceptionService = orderExceptionService;
+        this.seckillOrderProducer = seckillOrderProducer;
     }
 
     /**
@@ -69,5 +74,53 @@ public class OrderRecoveryService {
                 .eq("status", 0)
                 .orderByAsc("create_time")
                 .last("limit " + Math.max(1, Math.min(limit, 200))));
+    }
+
+    /**
+     * 自动重投未处理的异常订单。
+     *
+     * <p>发出去不直接标 REPAIRED：消费端成功与否这里看不到，先累加 retryCount，
+     * 到达上限后标 IGNORED，避免无限重投。订单落库本身有唯一索引兜底，重复投递是幂等的。</p>
+     *
+     * @param shardIndex 当前分片下标
+     * @param shardTotal 分片总数
+     * @param maxRetry   最大重投次数
+     * @param limit      单次最多处理条数
+     * @return 本轮重投条数
+     */
+    public int retryOpen(int shardIndex, int shardTotal, int maxRetry, int limit) {
+        int total = Math.max(1, shardTotal);
+        int index = Math.max(0, Math.min(shardIndex, total - 1));
+        int max = Math.max(1, maxRetry);
+        List<OrderException> list = orderExceptionService.list(new QueryWrapper<OrderException>()
+                .eq("status", 0)
+                .lt("retry_count", max)
+                .orderByAsc("create_time")
+                .last("limit " + Math.max(1, Math.min(limit, 200))));
+
+        int count = 0;
+        for (OrderException exception : list) {
+            Long orderId = exception.getOrderId();
+            if (orderId == null) {
+                continue;
+            }
+            if (total > 1 && Math.floorMod(orderId, (long) total) != index) {
+                continue;
+            }
+            try {
+                seckillOrderProducer.send(new SeckillOrderMessage(
+                        orderId, exception.getUserId(), exception.getVoucherId()));
+                int retried = (exception.getRetryCount() == null ? 0 : exception.getRetryCount()) + 1;
+                exception.setRetryCount(retried);
+                if (retried >= max) {
+                    exception.setStatus(2);
+                }
+                orderExceptionService.updateById(exception);
+                count++;
+            } catch (Exception e) {
+                log.error("[recovery] 自动重投失败 orderId={}", orderId, e);
+            }
+        }
+        return count;
     }
 }

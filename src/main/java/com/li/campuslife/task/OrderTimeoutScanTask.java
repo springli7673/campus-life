@@ -6,7 +6,6 @@ import com.li.campuslife.service.IVoucherOrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -29,7 +28,9 @@ public class OrderTimeoutScanTask {
         this.voucherOrderService = voucherOrderService;
     }
 
-    @Scheduled(fixedDelayString = "${campus.seckill.timeout-scan-delay-ms:300000}")
+    /**
+     * 由 XXL-JOB 的 orderTimeoutJob 调用；回滚时可在这里加回 @Scheduled。
+     */
     public void scan() {
         LocalDateTime deadline = LocalDateTime.now().minusSeconds(timeoutSeconds);
         List<VoucherOrder> list = voucherOrderService.list(new QueryWrapper<VoucherOrder>()

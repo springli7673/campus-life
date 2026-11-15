@@ -11,6 +11,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
@@ -55,36 +56,65 @@ public class SeckillPreheatService implements ApplicationRunner {
         List<SeckillVoucher> vouchers = seckillVoucherService.list();
         int count = 0;
         for (SeckillVoucher sv : vouchers) {
-            if (sv.getBeginTime() == null || sv.getEndTime() == null) {
-                continue;
+            if (preheatOne(sv, force)) {
+                count++;
             }
-            String voucherId = sv.getVoucherId().toString();
-            Map<String, String> activity = new HashMap<>(2);
-            activity.put("begin", String.valueOf(sv.getBeginTime().atZone(ZoneId.systemDefault()).toEpochSecond()));
-            activity.put("end", String.valueOf(sv.getEndTime().atZone(ZoneId.systemDefault()).toEpochSecond()));
-            stringRedisTemplate.opsForHash().putAll(RedisConstants.SECKILL_ACTIVITY_KEY + voucherId, activity);
-
-            String stockKey = RedisConstants.SECKILL_STOCK_KEY + voucherId;
-            if (force) {
-                stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(sv.getStock()));
-            } else {
-                stringRedisTemplate.opsForValue().setIfAbsent(stockKey, String.valueOf(sv.getStock()));
-            }
-
-            String orderKey = RedisConstants.SECKILL_ORDER_KEY + voucherId;
-            if (force) {
-                // 强制重置时先清空占位集合，否则上一次失败/回滚残留的用户会一直"重复下单"
-                stringRedisTemplate.delete(orderKey);
-            }
-            List<VoucherOrder> orders = voucherOrderService.list(
-                    new QueryWrapper<VoucherOrder>()
-                            .eq("voucher_id", sv.getVoucherId())
-                            .ne("status", 4));
-            for (VoucherOrder order : orders) {
-                stringRedisTemplate.opsForSet().add(orderKey, order.getUserId().toString());
-            }
-            count++;
         }
         return count;
+    }
+
+    /**
+     * 只预热即将开售的券，供 XXL-JOB 的 seckillWarmUpJob 每分钟调用。
+     *
+     * @param windowMinutes 提前预热的分钟数
+     * @return 处理的券数量
+     */
+    public int preheatStartingSoon(int windowMinutes) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime until = now.plusMinutes(Math.max(1, windowMinutes));
+        List<SeckillVoucher> vouchers = seckillVoucherService.list(
+                new QueryWrapper<SeckillVoucher>()
+                        .ge("begin_time", now)
+                        .le("begin_time", until));
+        int count = 0;
+        for (SeckillVoucher sv : vouchers) {
+            if (preheatOne(sv, false)) {
+                count++;
+            }
+        }
+        log.info("[preheat] 开售前 {} 分钟预热，处理 {} 张券", windowMinutes, count);
+        return count;
+    }
+
+    private boolean preheatOne(SeckillVoucher sv, boolean force) {
+        if (sv.getBeginTime() == null || sv.getEndTime() == null) {
+            return false;
+        }
+        String voucherId = sv.getVoucherId().toString();
+        Map<String, String> activity = new HashMap<>(2);
+        activity.put("begin", String.valueOf(sv.getBeginTime().atZone(ZoneId.systemDefault()).toEpochSecond()));
+        activity.put("end", String.valueOf(sv.getEndTime().atZone(ZoneId.systemDefault()).toEpochSecond()));
+        stringRedisTemplate.opsForHash().putAll(RedisConstants.SECKILL_ACTIVITY_KEY + voucherId, activity);
+
+        String stockKey = RedisConstants.SECKILL_STOCK_KEY + voucherId;
+        if (force) {
+            stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(sv.getStock()));
+        } else {
+            stringRedisTemplate.opsForValue().setIfAbsent(stockKey, String.valueOf(sv.getStock()));
+        }
+
+        String orderKey = RedisConstants.SECKILL_ORDER_KEY + voucherId;
+        if (force) {
+            // 强制重置时先清空占位集合，否则上一次失败/回滚残留的用户会一直"重复下单"
+            stringRedisTemplate.delete(orderKey);
+        }
+        List<VoucherOrder> orders = voucherOrderService.list(
+                new QueryWrapper<VoucherOrder>()
+                        .eq("voucher_id", sv.getVoucherId())
+                        .ne("status", 4));
+        for (VoucherOrder order : orders) {
+            stringRedisTemplate.opsForSet().add(orderKey, order.getUserId().toString());
+        }
+        return true;
     }
 }

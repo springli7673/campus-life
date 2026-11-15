@@ -14,7 +14,7 @@ spring:
       host: 127.0.0.1
       port: 6379
       # Redis 有密码时用环境变量 REDIS_PASSWORD 覆盖；没有密码留空即可
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:123456}
       lettuce: #redis连接池
         pool:
           max-active: 10  #最大连接数
@@ -70,6 +70,20 @@ campus:
   reconcile:
     enabled: true # 是否开启库存对账补偿任务
     interval-ms: 300000 # 对账间隔时间，单位毫秒
+
+# XXL-JOB 调度中心 / 执行器
+xxl:
+  job:
+    enabled: true # 设为 false 可整体停用执行器（回滚时用）
+    admin:
+      addresses: http://localhost:8088 # admin 是根路径，不要加 /xxl-job-admin
+    accessToken: default_token # 必须与 admin 侧一致
+    executor:
+      appname: campus-life-executor
+      ip: "" # 留空自动获取；双实例时用 --xxl.job.executor.port 区分
+      port: 9999
+      logpath: ./logs/xxl-job
+      logretentiondays: 7
 
 # MyBatis-Plus 配置
 mybatis-plus:

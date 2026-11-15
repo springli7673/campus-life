@@ -65,14 +65,33 @@ public class StockReconcileService {
     }
 
     /**
-     * 全量对账。
+     * 全量对账（单实例 / 运维手工触发）。
      *
-     * @param immediateRepair true 时跳过"两次观测"确认，立即修复（运维手工触发用）
+     * @param immediateRepair true 时跳过"两次观测"确认，立即修复
      */
     public List<ReconcileResult> reconcileAll(boolean immediateRepair) {
+        return reconcileAll(immediateRepair, 0, 1);
+    }
+
+    /**
+     * 按分片对账：只处理 {@code voucherId % shardTotal == shardIndex} 的券。
+     *
+     * <p>分片广播时每个实例只跑自己那份，避免多实例重复修复同一张券。</p>
+     *
+     * @param immediateRepair true 时跳过"两次观测"确认，立即修复
+     * @param shardIndex      当前分片下标，从 0 开始
+     * @param shardTotal      分片总数
+     */
+    public List<ReconcileResult> reconcileAll(boolean immediateRepair, int shardIndex, int shardTotal) {
+        int total = Math.max(1, shardTotal);
+        int index = Math.max(0, Math.min(shardIndex, total - 1));
         List<SeckillVoucher> vouchers = seckillVoucherService.list();
         List<ReconcileResult> results = new ArrayList<>(vouchers.size());
         for (SeckillVoucher sv : vouchers) {
+            long voucherId = sv.getVoucherId() == null ? 0L : sv.getVoucherId();
+            if (total > 1 && Math.floorMod(voucherId, (long) total) != index) {
+                continue;
+            }
             try {
                 results.add(reconcileOne(sv, immediateRepair));
             } catch (Exception e) {
