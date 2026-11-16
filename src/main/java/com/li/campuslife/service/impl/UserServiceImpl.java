@@ -42,6 +42,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    /** 仅本地演示：把验证码直接返回给前端，免去翻日志。线上必须保持 false */
+    @org.springframework.beans.factory.annotation.Value("${campus.auth.return-code:false}")
+    private boolean returnCode;
+
     @Override
     public Result sendCode(String phone, HttpSession session) {
         //1.校验手机号
@@ -55,6 +59,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY+phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
         //5.发送验证码，返回----模拟发送
         log.debug("发送验证码成功：验证码为{}",code);
+        if (returnCode) {
+            return Result.ok(Map.of("code", code, "phone", phone));
+        }
         return Result.ok();
     }
 

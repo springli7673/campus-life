@@ -60,6 +60,9 @@ spring:
 
 #项目自定义配置
 campus:
+  auth:
+    # 仅本地演示：验证码直接返回给前端；对外部署必须设为 false
+    return-code: true
   search:
     mode: es # es / db；设为 db 时检索只走 MySQL LIKE，便于回滚
   upload:
