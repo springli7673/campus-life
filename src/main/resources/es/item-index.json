@@ -1,0 +1,37 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "properties": {
+      "id": { "type": "long" },
+      "storeId": { "type": "long" },
+      "storeName": { "type": "keyword" },
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "brand": {
+        "type": "text",
+        "analyzer": "ik_smart",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 128 }
+        }
+      },
+      "category": { "type": "keyword" },
+      "price": { "type": "integer" },
+      "stock": { "type": "integer" },
+      "sold": { "type": "integer" },
+      "commentCount": { "type": "integer" },
+      "image": { "type": "keyword", "index": false },
+      "spec": { "type": "flattened" },
+      "updateTime": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||strict_date_optional_time||epoch_millis" }
+    }
+  }
+}

@@ -5,6 +5,7 @@ import com.li.campuslife.dto.ItemVO;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Item;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface IItemService extends IService<Item> {
@@ -23,6 +24,11 @@ public interface IItemService extends IService<Item> {
     Result recommend(Integer size);
 
     Result categories();
+
+    /**
+     * 全量同步到 ES（游标分批）。返回同步条数。
+     */
+    int syncToEs() throws IOException;
 
     List<ItemVO> toVOList(List<Item> items);
 

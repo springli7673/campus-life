@@ -5,9 +5,12 @@ import com.li.campuslife.service.IItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
 
 /**
  * 商城商品接口。检索实现可替换（MySQL / ES），对外契约不变。
@@ -41,5 +44,16 @@ public class ItemController {
     @GetMapping("/{id}")
     public Result detail(@PathVariable("id") Long id) {
         return itemService.detail(id);
+    }
+
+    /**
+     * 全量重建商品索引（游标分批，8.8 万条约 1 分钟）。
+     * 仅本地/运维使用，上线应改成受保护的运维接口或交给 XXL-JOB。
+     */
+    @PostMapping("/sync")
+    public Result sync() throws IOException {
+        long start = System.currentTimeMillis();
+        int total = itemService.syncToEs();
+        return Result.ok("同步完成：" + total + " 条，耗时 " + (System.currentTimeMillis() - start) + "ms");
     }
 }

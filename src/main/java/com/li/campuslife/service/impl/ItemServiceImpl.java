@@ -9,20 +9,29 @@ import com.li.campuslife.dto.ItemVO;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Item;
 import com.li.campuslife.mapper.ItemMapper;
+import com.li.campuslife.search.EsItemService;
 import com.li.campuslife.service.IItemService;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 商品检索：当前用 MySQL 实现，8.8 万数据下 LIKE 全表扫会有明显延迟，
- * 后续接入 ES 时只需替换本类，Controller 与前端不用改。
+ * 商品检索：优先走 ES，异常或索引未就绪时回落到 MySQL。
+ *
+ * <p>MySQL 实现完整保留，既作降级方案，也用来对比两种方案的耗时。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements IItemService {
+
+    private static final Logger log = LoggerFactory.getLogger(ItemServiceImpl.class);
 
     /** 店铺 id → 名称；建 tb_store 表后改成查库 */
     private static final Map<Long, String> STORE_NAMES = Map.of(
@@ -36,11 +45,26 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     private static final int MAX_PAGE_SIZE = 50;
 
+    private final EsItemService esItemService;
+
     @Override
     public Result page(String keyword, String category, String sort, Integer page, Integer size) {
         int current = page == null || page < 1 ? 1 : page;
         int limit = size == null || size < 1 ? 10 : Math.min(size, MAX_PAGE_SIZE);
 
+        if (esItemService.ready()) {
+            try {
+                EsItemService.SearchResult result = esItemService.search(keyword, category, sort, current, limit);
+                return Result.ok(result.list(), result.total());
+            } catch (Exception e) {
+                log.warn("[item] ES 检索失败，回落 MySQL: {}", e.toString());
+            }
+        }
+        return pageFromDb(keyword, category, sort, current, limit);
+    }
+
+    /** MySQL 实现：LIKE 前缀通配走不了索引，8.8 万数据下约 500ms */
+    private Result pageFromDb(String keyword, String category, String sort, int current, int limit) {
         QueryWrapper<Item> wrapper = new QueryWrapper<>();
         wrapper.eq("status", 1);
         if (StrUtil.isNotBlank(category) && !"全部".equals(category)) {
@@ -63,6 +87,11 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         wrapper.last("LIMIT " + (current - 1) * limit + "," + limit);
         List<Item> items = list(wrapper);
         return Result.ok(toVOList(items), total);
+    }
+
+    @Override
+    public int syncToEs() throws IOException {
+        return esItemService.syncAll();
     }
 
     @Override
