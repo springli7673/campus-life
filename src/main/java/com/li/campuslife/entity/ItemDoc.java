@@ -15,10 +15,6 @@ public class ItemDoc implements Serializable {
 
     private Long id;
 
-    private Long storeId;
-
-    private String storeName;
-
     private String name;
 
     /** 单位：分 */

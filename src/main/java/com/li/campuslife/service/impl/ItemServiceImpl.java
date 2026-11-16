@@ -33,16 +33,6 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     private static final Logger log = LoggerFactory.getLogger(ItemServiceImpl.class);
 
-    /** 店铺 id → 名称；建 tb_store 表后改成查库 */
-    private static final Map<Long, String> STORE_NAMES = Map.of(
-            1L, "校园数码",
-            2L, "校园服饰",
-            3L, "校园箱包",
-            4L, "校园母婴",
-            5L, "校园超市",
-            6L, "校园生活馆"
-    );
-
     private static final int MAX_PAGE_SIZE = 50;
 
     private final EsItemService esItemService;
@@ -138,8 +128,6 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     public ItemVO toVO(Item item) {
         return ItemVO.builder()
                 .id(item.getId())
-                .storeId(item.getStoreId())
-                .storeName(STORE_NAMES.getOrDefault(item.getStoreId(), "校园商城"))
                 .name(item.getName())
                 .price(item.getPrice())
                 .stock(item.getStock())

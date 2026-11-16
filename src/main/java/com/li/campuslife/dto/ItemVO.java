@@ -8,6 +8,8 @@ import java.util.Map;
 
 /**
  * 商品视图对象：spec 从 JSON 字符串转成 Map，避免前端二次解析。
+ *
+ * <p>商品为平台自营，没有店铺维度；多商家会引入拆单与结算，本项目刻意不做。</p>
  */
 @Data
 @Builder
@@ -16,11 +18,6 @@ public class ItemVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
-
-    private Long storeId;
-
-    /** 店铺名，由 storeId 映射（见 ItemServiceImpl.STORE_NAMES） */
-    private String storeName;
 
     private String name;
 

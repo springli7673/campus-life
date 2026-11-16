@@ -232,8 +232,6 @@ public class EsItemService {
     private ItemDoc toDoc(Item item) {
         ItemDoc doc = new ItemDoc();
         doc.setId(item.getId());
-        doc.setStoreId(item.getStoreId());
-        doc.setStoreName(storeName(item.getStoreId()));
         doc.setName(item.getName());
         doc.setPrice(item.getPrice());
         doc.setStock(item.getStock());
@@ -245,19 +243,6 @@ public class EsItemService {
         doc.setCommentCount(item.getCommentCount());
         doc.setUpdateTime(item.getUpdateTime() == null ? null : item.getUpdateTime().toString().replace('T', ' '));
         return doc;
-    }
-
-    private static final Map<Long, String> STORE_NAMES = Map.of(
-            1L, "校园数码",
-            2L, "校园服饰",
-            3L, "校园箱包",
-            4L, "校园母婴",
-            5L, "校园超市",
-            6L, "校园生活馆"
-    );
-
-    private String storeName(Long storeId) {
-        return STORE_NAMES.getOrDefault(storeId, "校园商城");
     }
 
     private Map<String, String> parseSpec(String spec) {

@@ -24,9 +24,6 @@ public class Item implements Serializable {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    /** 商城店铺 id，1 数码 / 2 服饰 / 3 箱包 / 4 母婴 / 5 超市 / 6 生活馆 */
-    private Long storeId;
-
     private String name;
 
     /** 单位：分 */
