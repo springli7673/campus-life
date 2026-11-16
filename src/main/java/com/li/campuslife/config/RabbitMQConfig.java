@@ -97,4 +97,24 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(shopEsDlq()).to(shopEsDlxExchange())
                 .with(MqNames.SHOP_ES_DLQ_ROUTING_KEY);
     }
+
+    /**
+     * 商品库存变更 -> ES 局部更新。
+     * 队列不配死信：消费失败只是索引里的库存旧一点，每日全量重建会纠正。
+     */
+    @Bean
+    public DirectExchange itemSyncExchange() {
+        return new DirectExchange(MqNames.ITEM_SYNC_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue itemEsSyncQueue() {
+        return QueueBuilder.durable(MqNames.ITEM_ES_SYNC_QUEUE).build();
+    }
+
+    @Bean
+    public Binding itemEsSyncBinding() {
+        return BindingBuilder.bind(itemEsSyncQueue()).to(itemSyncExchange())
+                .with(MqNames.ITEM_ES_SYNC_ROUTING_KEY);
+    }
 }

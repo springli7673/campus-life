@@ -42,4 +42,11 @@ public final class MqNames {
     public static final String SHOP_ES_DLX_EXCHANGE = "campus.shop.dlx.exchange";
     public static final String SHOP_ES_DLQ = "campus.shop.es.dlq";
     public static final String SHOP_ES_DLQ_ROUTING_KEY = "shop.es.dead";
+
+    /**
+     * 商品库存/销量变更 -> ES 局部更新
+     */
+    public static final String ITEM_SYNC_EXCHANGE = "campus.item.exchange";
+    public static final String ITEM_ES_SYNC_QUEUE = "campus.item.es.queue";
+    public static final String ITEM_ES_SYNC_ROUTING_KEY = "item.es.sync";
 }

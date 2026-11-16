@@ -13,6 +13,7 @@ import com.li.campuslife.exception.BizException;
 import com.li.campuslife.mapper.ItemMapper;
 import com.li.campuslife.mapper.ItemOrderDetailMapper;
 import com.li.campuslife.mapper.ItemOrderMapper;
+import com.li.campuslife.mq.ItemStockProducer;
 import com.li.campuslife.service.IItemOrderService;
 import com.li.campuslife.utils.RedisIdWorker;
 import com.li.campuslife.utils.UserHolder;
@@ -21,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -52,6 +55,7 @@ public class ItemOrderServiceImpl implements IItemOrderService {
     private final ItemOrderMapper itemOrderMapper;
     private final ItemOrderDetailMapper itemOrderDetailMapper;
     private final RedisIdWorker redisIdWorker;
+    private final ItemStockProducer itemStockProducer;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -106,6 +110,8 @@ public class ItemOrderServiceImpl implements IItemOrderService {
             itemOrderDetailMapper.insert(detail);
         }
 
+        notifyEsAfterCommit(details);
+
         log.info("[item-order] 下单成功 orderNo={} userId={} 金额={}分 明细={}",
                 orderNo, userId, totalAmount, details.size());
 
@@ -144,7 +150,7 @@ public class ItemOrderServiceImpl implements IItemOrderService {
         if (!closeIfUnpaid(orderNo)) {
             return Result.fail("只有待支付订单可以取消");
         }
-        restoreStock(orderNo);
+        restoreStockAndNotify(orderNo);
         return Result.ok();
     }
 
@@ -182,7 +188,7 @@ public class ItemOrderServiceImpl implements IItemOrderService {
         int closed = 0;
         for (ItemOrder order : expired) {
             if (closeIfUnpaid(order.getOrderNo())) {
-                restoreStock(order.getOrderNo());
+                restoreStockAndNotify(order.getOrderNo());
                 closed++;
             }
         }
@@ -202,11 +208,33 @@ public class ItemOrderServiceImpl implements IItemOrderService {
         return rows > 0;
     }
 
-    private void restoreStock(String orderNo) {
+    private void restoreStockAndNotify(String orderNo) {
         List<ItemOrderDetail> details = itemOrderDetailMapper.selectList(
                 new QueryWrapper<ItemOrderDetail>().eq("order_no", orderNo));
         for (ItemOrderDetail detail : details) {
             itemMapper.restoreStock(detail.getItemId(), detail.getQuantity());
+        }
+        notifyEsAfterCommit(details);
+    }
+
+    /**
+     * 事务提交后再投递 ES 同步消息：提前发的话消费者可能查到未提交的库存，
+     * 反而把索引写成旧值。
+     */
+    private void notifyEsAfterCommit(List<ItemOrderDetail> details) {
+        if (details.isEmpty()) {
+            return;
+        }
+        List<Long> itemIds = details.stream().map(ItemOrderDetail::getItemId).distinct().toList();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    itemIds.forEach(itemStockProducer::send);
+                }
+            });
+        } else {
+            itemIds.forEach(itemStockProducer::send);
         }
     }
 

@@ -202,6 +202,33 @@ public class EsItemService {
         return new SearchResult(list, total);
     }
 
+    /**
+     * 单条重建索引（商品变更 / 库存回补后由 MQ 触发）。
+     */
+    public void indexItem(Item item) throws IOException {
+        client.index(i -> i.index(ALIAS).id(String.valueOf(item.getId())).document(toDoc(item)));
+    }
+
+    /** 商品下架或删除时移除索引 */
+    public void deleteItem(Long itemId) throws IOException {
+        try {
+            client.delete(d -> d.index(ALIAS).id(String.valueOf(itemId)));
+        } catch (Exception e) {
+            if (!e.getMessage().contains("not_found")) {
+                throw e;
+            }
+        }
+    }
+
+    /** 索引文档数，对账用 */
+    public long count() throws IOException {
+        return client.count(c -> c.index(ALIAS)).count();
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     private ItemDoc toDoc(Item item) {
         ItemDoc doc = new ItemDoc();
         doc.setId(item.getId());
