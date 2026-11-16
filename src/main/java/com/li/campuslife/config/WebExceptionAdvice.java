@@ -1,6 +1,7 @@
 package com.li.campuslife.config;
 
 import com.li.campuslife.dto.Result;
+import com.li.campuslife.exception.BizException;
 import com.li.campuslife.exception.RateLimitException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,12 @@ public class WebExceptionAdvice {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public Result handleRateLimit(RateLimitException e) {
         log.warn("[rate-limit] {}", e.getMessage());
+        return Result.fail(e.getMessage());
+    }
+
+    @ExceptionHandler(BizException.class)
+    public Result handleBiz(BizException e) {
+        log.warn("[biz] {}", e.getMessage());
         return Result.fail(e.getMessage());
     }
 
