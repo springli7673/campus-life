@@ -63,6 +63,9 @@ campus:
   auth:
     # 仅本地演示：验证码直接返回给前端；对外部署必须设为 false
     return-code: true
+  admin:
+    # 管理端令牌：请求头 X-Admin-Token；留空则管理接口一律拒绝
+    token: campus-admin-dev
   search:
     mode: es # es / db；设为 db 时检索只走 MySQL LIKE，便于回滚
   upload:

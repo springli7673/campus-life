@@ -13,7 +13,7 @@ import com.li.campuslife.exception.BizException;
 import com.li.campuslife.mapper.ItemMapper;
 import com.li.campuslife.mapper.ItemOrderDetailMapper;
 import com.li.campuslife.mapper.ItemOrderMapper;
-import com.li.campuslife.mq.ItemStockProducer;
+import com.li.campuslife.mq.ItemSyncProducer;
 import com.li.campuslife.service.IItemOrderService;
 import com.li.campuslife.utils.RedisIdWorker;
 import com.li.campuslife.utils.UserHolder;
@@ -55,7 +55,7 @@ public class ItemOrderServiceImpl implements IItemOrderService {
     private final ItemOrderMapper itemOrderMapper;
     private final ItemOrderDetailMapper itemOrderDetailMapper;
     private final RedisIdWorker redisIdWorker;
-    private final ItemStockProducer itemStockProducer;
+    private final ItemSyncProducer itemSyncProducer;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -230,11 +230,11 @@ public class ItemOrderServiceImpl implements IItemOrderService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    itemIds.forEach(itemStockProducer::send);
+                    itemIds.forEach(itemSyncProducer::send);
                 }
             });
         } else {
-            itemIds.forEach(itemStockProducer::send);
+            itemIds.forEach(itemSyncProducer::send);
         }
     }
 

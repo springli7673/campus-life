@@ -14,6 +14,9 @@ public class MvcConfig implements WebMvcConfigurer {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private AdminAuthInterceptor adminAuthInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
 
@@ -31,9 +34,11 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/voucher/**",
                         "/shop-type/**",
                         "/campus/**",
-                        "/upload/**");//放行的路径
+                        "/upload/**",
+                        "/admin/**");//放行的路径（/admin 由 AdminAuthInterceptor 用独立令牌校验）
 
-
+        // 管理端：校验 X-Admin-Token，不走用户登录态
+        registry.addInterceptor(adminAuthInterceptor).addPathPatterns("/admin/**");
     }
 
 

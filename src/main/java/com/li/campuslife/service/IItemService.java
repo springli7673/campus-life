@@ -1,6 +1,7 @@
 package com.li.campuslife.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.li.campuslife.dto.ItemSaveDTO;
 import com.li.campuslife.dto.ItemVO;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Item;
@@ -29,6 +30,18 @@ public interface IItemService extends IService<Item> {
      * 全量同步到 ES（游标分批）。返回同步条数。
      */
     int syncToEs() throws IOException;
+
+    // ===== 管理端 =====
+
+    /** 管理列表：包含下架商品，status 为空表示不限 */
+    Result adminPage(String keyword, Integer status, Integer page, Integer size);
+
+    Result saveItem(ItemSaveDTO dto);
+
+    Result updateItem(Long id, ItemSaveDTO dto);
+
+    /** 上架 / 下架，变更后异步同步索引 */
+    Result changeStatus(Long id, Integer status);
 
     List<ItemVO> toVOList(List<Item> items);
 

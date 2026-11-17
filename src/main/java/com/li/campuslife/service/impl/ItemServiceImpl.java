@@ -5,18 +5,24 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.li.campuslife.dto.ItemSaveDTO;
 import com.li.campuslife.dto.ItemVO;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.entity.Item;
+import com.li.campuslife.exception.BizException;
 import com.li.campuslife.mapper.ItemMapper;
+import com.li.campuslife.mq.ItemSyncProducer;
 import com.li.campuslife.search.EsItemService;
 import com.li.campuslife.service.IItemService;
+import com.li.campuslife.utils.AfterCommit;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +42,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     private static final int MAX_PAGE_SIZE = 50;
 
     private final EsItemService esItemService;
+    private final ItemSyncProducer itemSyncProducer;
 
     @Override
     public Result page(String keyword, String category, String sort, Integer page, Integer size) {
@@ -82,6 +89,128 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     @Override
     public int syncToEs() throws IOException {
         return esItemService.syncAll();
+    }
+
+    @Override
+    public Result adminPage(String keyword, Integer status, Integer page, Integer size) {
+        int current = page == null || page < 1 ? 1 : page;
+        int limit = size == null || size < 1 ? 20 : Math.min(size, MAX_PAGE_SIZE);
+
+        QueryWrapper<Item> wrapper = new QueryWrapper<>();
+        if (status != null) {
+            wrapper.eq("status", status);
+        }
+        if (StrUtil.isNotBlank(keyword)) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like("name", kw).or().like("id", kw));
+        }
+        wrapper.orderByDesc("update_time");
+
+        long total = count(wrapper);
+        wrapper.last("LIMIT " + (current - 1) * limit + "," + limit);
+        return Result.ok(toVOList(list(wrapper)), total);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result saveItem(ItemSaveDTO dto) {
+        if (dto == null || StrUtil.isBlank(dto.getName())) {
+            throw new BizException("商品名称不能为空");
+        }
+        if (dto.getPrice() == null || dto.getPrice() <= 0) {
+            throw new BizException("价格必须大于 0");
+        }
+        if (dto.getStock() == null || dto.getStock() < 0) {
+            throw new BizException("库存不能为负");
+        }
+
+        Item item = new Item()
+                .setName(dto.getName().trim())
+                .setPrice(dto.getPrice())
+                .setStock(dto.getStock())
+                .setImage(dto.getImage())
+                .setCategory(dto.getCategory())
+                .setBrand(dto.getBrand())
+                .setSpec(toSpecJson(dto.getSpec()))
+                .setSold(0)
+                .setCommentCount(0)
+                .setStatus(dto.getStatus() == null ? 1 : dto.getStatus())
+                .setCreateTime(LocalDateTime.now())
+                .setUpdateTime(LocalDateTime.now());
+
+        save(item);
+        notifyIndexAfterCommit(item.getId());
+        return Result.ok(item.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result updateItem(Long id, ItemSaveDTO dto) {
+        Item item = getById(id);
+        if (item == null) {
+            throw new BizException("商品不存在");
+        }
+        if (dto.getName() != null) {
+            if (StrUtil.isBlank(dto.getName())) {
+                throw new BizException("商品名称不能为空");
+            }
+            item.setName(dto.getName().trim());
+        }
+        if (dto.getPrice() != null) {
+            if (dto.getPrice() <= 0) {
+                throw new BizException("价格必须大于 0");
+            }
+            item.setPrice(dto.getPrice());
+        }
+        if (dto.getStock() != null) {
+            if (dto.getStock() < 0) {
+                throw new BizException("库存不能为负");
+            }
+            item.setStock(dto.getStock());
+        }
+        if (dto.getImage() != null) {
+            item.setImage(dto.getImage());
+        }
+        if (dto.getCategory() != null) {
+            item.setCategory(dto.getCategory());
+        }
+        if (dto.getBrand() != null) {
+            item.setBrand(dto.getBrand());
+        }
+        if (dto.getSpec() != null) {
+            item.setSpec(toSpecJson(dto.getSpec()));
+        }
+        item.setUpdateTime(LocalDateTime.now());
+
+        updateById(item);
+        notifyIndexAfterCommit(id);
+        return Result.ok();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result changeStatus(Long id, Integer status) {
+        if (status == null || (status != 1 && status != 2)) {
+            throw new BizException("状态只能是 1（上架）或 2（下架）");
+        }
+        Item item = getById(id);
+        if (item == null) {
+            throw new BizException("商品不存在");
+        }
+        item.setStatus(status);
+        item.setUpdateTime(LocalDateTime.now());
+        updateById(item);
+        notifyIndexAfterCommit(id);
+        return Result.ok();
+    }
+
+    /** 商品变更后异步重建索引；消费端下架会自动删除文档 */
+    private void notifyIndexAfterCommit(Long itemId) {
+        AfterCommit.run(() -> itemSyncProducer.send(itemId));
+    }
+
+    private String toSpecJson(Map<String, String> spec) {
+        return spec == null || spec.isEmpty() ? null : JSONUtil.toJsonStr(spec);
     }
 
     @Override

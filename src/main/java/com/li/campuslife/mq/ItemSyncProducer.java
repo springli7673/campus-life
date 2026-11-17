@@ -7,20 +7,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * 商品库存/销量变更消息。
+ * 商品索引同步消息。
  *
- * <p>下单扣库存、取消回补后各投一条，消费端回查 DB 重建该商品的索引文档。
- * 投递失败只记日志：索引里的库存会旧一点，但每日全量重建能纠正。</p>
+ * <p>触发点：下单扣库存、取消订单回补、后台改价/上下架。
+ * 消费端回查 DB 重建该商品的索引文档，投递失败只记日志——
+ * 索引旧一点不影响交易，每日全量重建会纠正。</p>
  */
 @Component
-public class ItemStockProducer {
+public class ItemSyncProducer {
 
-    private static final Logger log = LoggerFactory.getLogger(ItemStockProducer.class);
+    private static final Logger log = LoggerFactory.getLogger(ItemSyncProducer.class);
 
     private final RabbitTemplate rabbitTemplate;
     private final boolean enabled;
 
-    public ItemStockProducer(RabbitTemplate rabbitTemplate,
+    public ItemSyncProducer(RabbitTemplate rabbitTemplate,
                              @Value("${campus.search.item-es-enabled:true}") boolean enabled) {
         this.rabbitTemplate = rabbitTemplate;
         this.enabled = enabled;
@@ -34,7 +35,7 @@ public class ItemStockProducer {
             rabbitTemplate.convertAndSend(
                     MqNames.ITEM_SYNC_EXCHANGE,
                     MqNames.ITEM_ES_SYNC_ROUTING_KEY,
-                    new ItemStockMessage(itemId));
+                    new ItemSyncMessage(itemId));
         } catch (Exception e) {
             log.error("[item-sync] 库存变更消息投递失败 itemId={}", itemId, e);
         }

@@ -16,20 +16,20 @@ import org.springframework.stereotype.Component;
  * 只有以数据库为准才不会把索引写成中间状态。</p>
  */
 @Component
-public class ItemStockListener {
+public class ItemSyncListener {
 
-    private static final Logger log = LoggerFactory.getLogger(ItemStockListener.class);
+    private static final Logger log = LoggerFactory.getLogger(ItemSyncListener.class);
 
     private final ItemMapper itemMapper;
     private final EsItemService esItemService;
 
-    public ItemStockListener(ItemMapper itemMapper, EsItemService esItemService) {
+    public ItemSyncListener(ItemMapper itemMapper, EsItemService esItemService) {
         this.itemMapper = itemMapper;
         this.esItemService = esItemService;
     }
 
     @RabbitListener(queues = MqNames.ITEM_ES_SYNC_QUEUE)
-    public void onChange(ItemStockMessage message) {
+    public void onChange(ItemSyncMessage message) {
         Item item = itemMapper.selectById(message.itemId());
         try {
             if (item == null || item.getStatus() == null || item.getStatus() != 1) {
