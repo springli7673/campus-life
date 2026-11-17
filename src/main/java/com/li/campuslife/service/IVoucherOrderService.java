@@ -26,4 +26,10 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
      * 查询订单状态
      */
     Result queryOrder(Long orderId);
+
+    /** 我的券（含券信息与店铺名） */
+    Result listMine();
+
+    /** 支付券订单：1 待支付 -> 2 待使用 */
+    Result payOrder(Long orderId);
 }

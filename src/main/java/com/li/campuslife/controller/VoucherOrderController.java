@@ -27,4 +27,20 @@ public class VoucherOrderController {
     public Result queryOrder(@PathVariable("id") Long orderId) {
         return voucherOrderService.queryOrder(orderId);
     }
+
+    /**
+     * 支付券订单（演示环境直接置为待使用）
+     */
+    @PostMapping("/{id}/pay")
+    public Result pay(@PathVariable("id") Long orderId) {
+        return voucherOrderService.payOrder(orderId);
+    }
+
+    /**
+     * 我的券：到店出示订单号核销
+     */
+    @GetMapping("/list")
+    public Result listMine() {
+        return voucherOrderService.listMine();
+    }
 }

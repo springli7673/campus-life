@@ -1,10 +1,15 @@
 package com.li.campuslife.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.li.campuslife.dto.CouponOrderVO;
 import com.li.campuslife.dto.Result;
 import com.li.campuslife.dto.UserDTO;
+import com.li.campuslife.entity.Shop;
+import com.li.campuslife.entity.Voucher;
 import com.li.campuslife.entity.VoucherOrder;
 import com.li.campuslife.exception.RateLimitException;
+import com.li.campuslife.mapper.ShopMapper;
+import com.li.campuslife.mapper.VoucherMapper;
 import com.li.campuslife.mapper.VoucherOrderMapper;
 import com.li.campuslife.mq.SeckillCorrelationData;
 import com.li.campuslife.mq.SeckillOrderMessage;
@@ -25,7 +30,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder>
@@ -53,6 +63,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private final OrderRecoveryService recoveryService;
     private final SeckillRateLimiter rateLimiter;
     private final TransactionTemplate transactionTemplate;
+    private final VoucherMapper voucherMapper;
+    private final ShopMapper shopMapper;
 
     public VoucherOrderServiceImpl(ISeckillVoucherService seckillVoucherService,
                                    RedisIdWorker redisIdWorker,
@@ -60,7 +72,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                                    SeckillOrderProducer seckillOrderProducer,
                                    OrderRecoveryService recoveryService,
                                    SeckillRateLimiter rateLimiter,
-                                   TransactionTemplate transactionTemplate) {
+                                   TransactionTemplate transactionTemplate,
+                                   VoucherMapper voucherMapper,
+                                   ShopMapper shopMapper) {
         this.seckillVoucherService = seckillVoucherService;
         this.redisIdWorker = redisIdWorker;
         this.stringRedisTemplate = stringRedisTemplate;
@@ -68,6 +82,89 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         this.recoveryService = recoveryService;
         this.rateLimiter = rateLimiter;
         this.transactionTemplate = transactionTemplate;
+        this.voucherMapper = voucherMapper;
+        this.shopMapper = shopMapper;
+    }
+
+    @Override
+    public Result payOrder(Long orderId) {
+        UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return Result.fail("请先登录");
+        }
+        boolean updated = update(new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<VoucherOrder>()
+                .eq("id", orderId)
+                .eq("user_id", user.getId())
+                .eq("status", 1)
+                .set("status", 2)
+                .set("pay_time", LocalDateTime.now()));
+        if (!updated) {
+            return Result.fail("订单不存在或已支付");
+        }
+        return Result.ok();
+    }
+
+    @Override
+    public Result listMine() {
+        UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return Result.fail("请先登录");
+        }
+        List<VoucherOrder> orders = list(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<VoucherOrder>()
+                .eq("user_id", user.getId())
+                .orderByDesc("create_time")
+                .last("LIMIT 100"));
+        if (orders.isEmpty()) {
+            return Result.ok(List.of());
+        }
+
+        List<Long> voucherIds = orders.stream().map(VoucherOrder::getVoucherId).distinct().toList();
+        Map<Long, Voucher> vouchers = new HashMap<>();
+        for (Voucher voucher : voucherMapper.selectBatchIds(voucherIds)) {
+            vouchers.put(voucher.getId(), voucher);
+        }
+
+        List<Long> shopIds = vouchers.values().stream().map(Voucher::getShopId).distinct().toList();
+        Map<Long, String> shopNames = new HashMap<>();
+        if (!shopIds.isEmpty()) {
+            for (Shop shop : shopMapper.selectBatchIds(shopIds)) {
+                shopNames.put(shop.getId(), shop.getName());
+            }
+        }
+
+        List<CouponOrderVO> result = new ArrayList<>(orders.size());
+        for (VoucherOrder order : orders) {
+            Voucher voucher = vouchers.get(order.getVoucherId());
+            result.add(CouponOrderVO.builder()
+                    .orderId(order.getId())
+                    .voucherId(order.getVoucherId())
+                    .title(voucher == null ? "券已下架" : voucher.getTitle())
+                    .subTitle(voucher == null ? null : voucher.getSubTitle())
+                    .shopName(voucher == null ? null : shopNames.get(voucher.getShopId()))
+                    .payValue(voucher == null ? null : voucher.getPayValue())
+                    .actualValue(voucher == null ? null : voucher.getActualValue())
+                    .status(order.getStatus())
+                    .statusText(statusText(order.getStatus()))
+                    .createTime(order.getCreateTime())
+                    .useTime(order.getUseTime())
+                    .build());
+        }
+        return Result.ok(result);
+    }
+
+    private static String statusText(Integer status) {
+        if (status == null) {
+            return "未知";
+        }
+        return switch (status) {
+            case 1 -> "待支付";
+            case 2 -> "待使用";
+            case 3 -> "已核销";
+            case 4 -> "已取消";
+            case 5 -> "退款中";
+            case 6 -> "已退款";
+            default -> "未知";
+        };
     }
 
     @Override
