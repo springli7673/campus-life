@@ -66,6 +66,9 @@ campus:
   admin:
     # 管理端令牌：请求头 X-Admin-Token；留空则管理接口一律拒绝
     token: campus-admin-dev
+  order:
+    # 商品订单未支付超时时间（分钟），超时后由 itemOrderTimeoutJob 关单并回补库存
+    item-timeout-minutes: 30
   search:
     mode: es # es / db；设为 db 时检索只走 MySQL LIKE，便于回滚
   upload:
