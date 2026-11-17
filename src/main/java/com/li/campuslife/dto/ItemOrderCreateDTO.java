@@ -15,6 +15,12 @@ public class ItemOrderCreateDTO implements Serializable {
 
     private List<Line> items;
 
+    /**
+     * 请求幂等号（UUID）。为空则不做幂等，用于兼容老客户端。
+     * 同一个 requestId 重复提交只会生成一笔订单。
+     */
+    private String requestId;
+
     @Data
     public static class Line implements Serializable {
         private static final long serialVersionUID = 1L;

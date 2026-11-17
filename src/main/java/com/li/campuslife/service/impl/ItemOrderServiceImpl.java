@@ -1,5 +1,6 @@
 package com.li.campuslife.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.li.campuslife.dto.ItemOrderCreateDTO;
@@ -20,11 +21,13 @@ import com.li.campuslife.utils.UserHolder;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,11 +54,17 @@ public class ItemOrderServiceImpl implements IItemOrderService {
     private static final int MAX_QUANTITY = 99;
     private static final int LIST_LIMIT = 50;
 
+    /** 请求幂等：order:req:{userId}:{requestId} -> PENDING / orderNo */
+    private static final String IDEM_KEY_PREFIX = "order:req:";
+    private static final String IDEM_PENDING = "PENDING";
+    private static final Duration IDEM_TTL = Duration.ofMinutes(10);
+
     private final ItemMapper itemMapper;
     private final ItemOrderMapper itemOrderMapper;
     private final ItemOrderDetailMapper itemOrderDetailMapper;
     private final RedisIdWorker redisIdWorker;
     private final ItemSyncProducer itemSyncProducer;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -68,6 +77,46 @@ public class ItemOrderServiceImpl implements IItemOrderService {
             throw new BizException("一次最多下单 " + MAX_LINES + " 种商品");
         }
 
+        // 请求幂等：同一 requestId 只生效一次
+        String requestId = StrUtil.trimToEmpty(dto.getRequestId());
+        String idemKey = requestId.isEmpty() ? null : IDEM_KEY_PREFIX + userId + ":" + requestId;
+
+        if (idemKey != null) {
+            Boolean acquired = stringRedisTemplate.opsForValue()
+                    .setIfAbsent(idemKey, IDEM_PENDING, IDEM_TTL);
+            if (!Boolean.TRUE.equals(acquired)) {
+                String existing = stringRedisTemplate.opsForValue().get(idemKey);
+                // 已经处理完：直接把上一次的订单还回去
+                if (StrUtil.isNotBlank(existing) && !IDEM_PENDING.equals(existing)) {
+                    ItemOrder done = itemOrderMapper.selectOne(new QueryWrapper<ItemOrder>()
+                            .eq("order_no", existing)
+                            .eq("user_id", userId));
+                    if (done != null) {
+                        log.info("[item-order] 重复请求命中幂等记录 requestId={} orderNo={}", requestId, existing);
+                        Map<String, Object> data = new LinkedHashMap<>();
+                        data.put("orderNo", done.getOrderNo());
+                        data.put("totalAmount", done.getTotalAmount());
+                        data.put("duplicate", true);
+                        return Result.ok(data);
+                    }
+                }
+                // 还在处理中：直接拒绝，避免并发双写
+                throw new BizException("订单正在处理中，请勿重复提交");
+            }
+        }
+
+        try {
+            return doCreate(dto, userId, idemKey);
+        } catch (RuntimeException e) {
+            // 业务失败要释放占位，否则用户 10 分钟内无法重试
+            if (idemKey != null) {
+                stringRedisTemplate.delete(idemKey);
+            }
+            throw e;
+        }
+    }
+
+    private Result doCreate(ItemOrderCreateDTO dto, Long userId, String idemKey) {
         String orderNo = String.valueOf(redisIdWorker.nextId("item-order"));
         int totalAmount = 0;
         List<ItemOrderDetail> details = new ArrayList<>(dto.getItems().size());
@@ -111,6 +160,15 @@ public class ItemOrderServiceImpl implements IItemOrderService {
         }
 
         notifyEsAfterCommit(details);
+
+        // 把占位值换成订单号，后续重复请求直接返回它；失败不影响下单结果
+        if (idemKey != null) {
+            try {
+                stringRedisTemplate.opsForValue().set(idemKey, orderNo, IDEM_TTL);
+            } catch (Exception e) {
+                log.warn("[item-order] 幂等记录写入失败 orderNo={}: {}", orderNo, e.toString());
+            }
+        }
 
         log.info("[item-order] 下单成功 orderNo={} userId={} 金额={}分 明细={}",
                 orderNo, userId, totalAmount, details.size());
