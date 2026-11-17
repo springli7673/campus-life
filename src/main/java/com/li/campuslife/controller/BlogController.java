@@ -55,6 +55,11 @@ public class BlogController {
         return blogService.queryHotBlog(current);
     }
 
+    @DeleteMapping("/{id}")
+    public Result delete(@PathVariable("id") Long id) {
+        return blogService.deleteMine(id);
+    }
+
     @GetMapping("/{id}")
     public Result queryBlogById(@PathVariable("id") Long id) {
         return blogService.queryBlogById(id);

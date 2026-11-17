@@ -13,6 +13,9 @@ public interface IBlogService extends IService<Blog> {
 
     Result queryBlogById(Long id);
 
+    /** 删除自己的笔记（连同评论） */
+    Result deleteMine(Long blogId);
+
     Result queryHotBlog(Integer current);
 
     Result likeBlog(Long id);

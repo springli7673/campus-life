@@ -11,6 +11,7 @@ import com.li.campuslife.entity.Blog;
 import com.li.campuslife.entity.Follow;
 import com.li.campuslife.entity.User;
 import com.li.campuslife.mapper.BlogMapper;
+import com.li.campuslife.service.IBlogCommentsService;
 import com.li.campuslife.service.IBlogService;
 import com.li.campuslife.service.IFollowService;
 import com.li.campuslife.service.IUserService;
@@ -20,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +45,29 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private IFollowService followService;
+    @Autowired
+    private IBlogCommentsService blogCommentsService;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result deleteMine(Long blogId) {
+        UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return Result.fail("请先登录");
+        }
+        Blog blog = getById(blogId);
+        if (blog == null) {
+            return Result.fail("笔记不存在");
+        }
+        if (!blog.getUserId().equals(user.getId())) {
+            return Result.fail("只能删除自己的笔记");
+        }
+        removeById(blogId);
+        // 顺带清掉评论，避免孤儿数据
+        blogCommentsService.remove(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.li.campuslife.entity.BlogComments>()
+                .eq("blog_id", blogId));
+        return Result.ok();
+    }
 
     @Override
     public Result queryBlogById(Long id) {
@@ -132,6 +157,32 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     public Result saveBlog(Blog blog) {
         //1.获取登录用户
         UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return Result.fail("请先登录");
+        }
+        // 参数校验：标题和正文必填，长度与表结构对齐
+        String title = StrUtil.trimToEmpty(blog.getTitle());
+        String content = StrUtil.trimToEmpty(blog.getContent());
+        if (title.isEmpty()) {
+            return Result.fail("标题不能为空");
+        }
+        if (title.length() > 100) {
+            return Result.fail("标题最多 100 个字");
+        }
+        if (content.isEmpty()) {
+            return Result.fail("正文不能为空");
+        }
+        if (content.length() > 2000) {
+            return Result.fail("正文最多 2000 个字");
+        }
+        blog.setTitle(title);
+        blog.setContent(content);
+        blog.setImages(StrUtil.trimToEmpty(blog.getImages()));
+        // 未关联商户时用 0 占位（tb_blog.shop_id 非空）
+        blog.setShopId(blog.getShopId() == null ? 0L : blog.getShopId());
+        // 计数由服务端初始化，避免前端伪造
+        blog.setLiked(0);
+        blog.setComments(0);
         blog.setUserId(user.getId());
         //2.保存探店笔记
         boolean isSuccess=save(blog);
