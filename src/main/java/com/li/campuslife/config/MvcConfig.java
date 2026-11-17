@@ -30,6 +30,7 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/user/code",
                         "/blog/hot",
                         "/blog/*",//笔记详情游客可读；发布/点赞仍需登录
+                        "/blog-comments/list/*",//评论列表游客可读
                         "/shop/**",
                         "/item/**",
                         "/voucher/**",
