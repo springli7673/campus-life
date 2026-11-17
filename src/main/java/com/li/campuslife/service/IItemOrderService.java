@@ -14,8 +14,8 @@ public interface IItemOrderService {
     /** 取消订单并回补库存 */
     Result cancel(String orderNo);
 
-    /** 我的订单 */
-    Result listMine();
+    /** 我的订单，分页 */
+    Result listMine(Integer page, Integer size);
 
     /** 订单详情 */
     Result detail(String orderNo);

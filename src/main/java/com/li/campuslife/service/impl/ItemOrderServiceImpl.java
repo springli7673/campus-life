@@ -52,7 +52,8 @@ public class ItemOrderServiceImpl implements IItemOrderService {
 
     private static final int MAX_LINES = 20;
     private static final int MAX_QUANTITY = 99;
-    private static final int LIST_LIMIT = 50;
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final int MAX_PAGE_SIZE = 50;
 
     /** 请求幂等：order:req:{userId}:{requestId} -> PENDING / orderNo */
     private static final String IDEM_KEY_PREFIX = "order:req:";
@@ -213,13 +214,18 @@ public class ItemOrderServiceImpl implements IItemOrderService {
     }
 
     @Override
-    public Result listMine() {
+    public Result listMine(Integer page, Integer size) {
         Long userId = currentUserId();
-        List<ItemOrder> orders = itemOrderMapper.selectList(new QueryWrapper<ItemOrder>()
-                .eq("user_id", userId)
-                .orderByDesc("create_time")
-                .last("LIMIT " + LIST_LIMIT));
-        return Result.ok(toVOList(orders));
+        int current = page == null || page < 1 ? 1 : page;
+        int limit = size == null || size < 1 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+
+        QueryWrapper<ItemOrder> wrapper = new QueryWrapper<ItemOrder>().eq("user_id", userId);
+        long total = itemOrderMapper.selectCount(wrapper);
+
+        wrapper.orderByDesc("create_time")
+                .last("LIMIT " + (current - 1) * limit + "," + limit);
+        List<ItemOrder> orders = itemOrderMapper.selectList(wrapper);
+        return Result.ok(toVOList(orders), total);
     }
 
     @Override
