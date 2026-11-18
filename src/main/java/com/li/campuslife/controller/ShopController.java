@@ -127,6 +127,17 @@ public class ShopController {
      * @param current 页码
      * @return 商铺列表
      */
+    /**
+     * 全部商户（发布笔记选关联商户用）。240 家，直接全量返回不分页。
+     */
+    @GetMapping("/all")
+    public Result queryAllShops() {
+        return Result.ok(shopService.list(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.li.campuslife.entity.Shop>()
+                .select("id", "name", "type_id", "area", "address")
+                .orderByAsc("type_id")
+                .orderByAsc("id")));
+    }
+
     @GetMapping("/of/name")
     public Result queryShopByName(
             @RequestParam(value = "name", required = false) String name,

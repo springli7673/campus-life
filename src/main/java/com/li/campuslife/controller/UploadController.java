@@ -10,6 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Slf4j
@@ -29,12 +32,15 @@ public class UploadController {
         try {
             String originalFilename = image.getOriginalFilename();
             String fileName = createNewFileName(originalFilename);
-            File target = new File(uploadDir, fileName);
+            // transferTo 传相对路径时 Tomcat 会基于临时目录解析，这里统一用绝对路径 + 流拷贝
+            File target = new File(uploadDir, fileName).getAbsoluteFile();
             File parent = target.getParentFile();
-            if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                throw new IOException("无法创建目录：" + parent);
+            if (parent != null) {
+                Files.createDirectories(parent.toPath());
             }
-            image.transferTo(target);
+            try (InputStream in = image.getInputStream()) {
+                Files.copy(in, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
             log.debug("文件上传成功，{}", target.getAbsolutePath());
             return Result.ok(fileName);
         } catch (IOException e) {

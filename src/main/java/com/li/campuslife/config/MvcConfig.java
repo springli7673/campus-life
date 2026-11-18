@@ -37,6 +37,7 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/shop-type/**",
                         "/campus/**",
                         "/upload/**",
+                        "/imgs/**",//上传的图片，静态资源不需要登录
                         "/admin/**");//放行的路径（/admin 由 AdminAuthInterceptor 用独立令牌校验）
 
         // 管理端：校验 X-Admin-Token，不走用户登录态
