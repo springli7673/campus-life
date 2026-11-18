@@ -105,6 +105,24 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     @Override
+    public Result consume(Long orderId) {
+        UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return Result.fail("请先登录");
+        }
+        boolean updated = update(new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<VoucherOrder>()
+                .eq("id", orderId)
+                .eq("user_id", user.getId())
+                .eq("status", 2)
+                .set("status", 3)
+                .set("use_time", LocalDateTime.now()));
+        if (!updated) {
+            return Result.fail("券不存在或状态不对（需为待使用）");
+        }
+        return Result.ok();
+    }
+
+    @Override
     public Result listMine() {
         UserDTO user = UserHolder.getUser();
         if (user == null) {

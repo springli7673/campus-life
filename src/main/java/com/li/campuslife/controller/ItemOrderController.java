@@ -29,8 +29,9 @@ public class ItemOrderController {
 
     @GetMapping("/list")
     public Result list(@RequestParam(required = false, defaultValue = "1") Integer page,
-                       @RequestParam(required = false, defaultValue = "10") Integer size) {
-        return itemOrderService.listMine(page, size);
+                       @RequestParam(required = false, defaultValue = "10") Integer size,
+                       @RequestParam(required = false) Integer status) {
+        return itemOrderService.listMine(page, size, status);
     }
 
     @GetMapping("/{orderNo}")

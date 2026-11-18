@@ -32,4 +32,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
 
     /** 支付券订单：1 待支付 -> 2 待使用 */
     Result payOrder(Long orderId);
+
+    /** 核销券：2 待使用 -> 3 已核销（演示环境由本人在券详情触发） */
+    Result consume(Long orderId);
 }

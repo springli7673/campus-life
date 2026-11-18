@@ -37,6 +37,14 @@ public class VoucherOrderController {
     }
 
     /**
+     * 核销券（演示：本人点击模拟店员核销）
+     */
+    @PostMapping("/{id}/consume")
+    public Result consume(@PathVariable("id") Long orderId) {
+        return voucherOrderService.consume(orderId);
+    }
+
+    /**
      * 我的券：到店出示订单号核销
      */
     @GetMapping("/list")

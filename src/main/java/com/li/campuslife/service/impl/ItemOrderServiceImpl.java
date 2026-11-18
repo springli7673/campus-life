@@ -214,12 +214,14 @@ public class ItemOrderServiceImpl implements IItemOrderService {
     }
 
     @Override
-    public Result listMine(Integer page, Integer size) {
+    public Result listMine(Integer page, Integer size, Integer status) {
         Long userId = currentUserId();
         int current = page == null || page < 1 ? 1 : page;
         int limit = size == null || size < 1 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 
-        QueryWrapper<ItemOrder> wrapper = new QueryWrapper<ItemOrder>().eq("user_id", userId);
+        QueryWrapper<ItemOrder> wrapper = new QueryWrapper<ItemOrder>()
+                .eq("user_id", userId)
+                .eq(status != null, "status", status);
         long total = itemOrderMapper.selectCount(wrapper);
 
         wrapper.orderByDesc("create_time")
