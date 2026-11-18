@@ -102,7 +102,8 @@ public class UserController {
      * 保存资料：昵称/头像写 tb_user，简介/城市/性别/生日写 tb_user_info
      */
     @PostMapping("/info")
-    public Result updateInfo(@RequestBody ProfileDTO dto) {
+    public Result updateInfo(@RequestBody ProfileDTO dto,
+                             @RequestHeader(value = "authorization", required = false) String token) {
         UserDTO current = UserHolder.getUser();
         if (current == null) {
             return Result.fail("请先登录");
@@ -130,6 +131,10 @@ public class UserController {
         }
         if (user.getNickName() != null || user.getIcon() != null) {
             userService.updateById(user);
+        }
+        // 登录态缓存在 Redis 的 hash 里，不同步的话本次会话仍显示旧昵称
+        if (StrUtil.isNotBlank(token) && user.getNickName() != null) {
+            stringRedisTemplate.opsForHash().put(LOGIN_USER_KEY + token, "nickName", user.getNickName());
         }
 
         boolean hasInfo = introduce != null || city != null
