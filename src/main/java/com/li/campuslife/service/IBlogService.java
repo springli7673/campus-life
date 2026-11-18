@@ -18,6 +18,9 @@ public interface IBlogService extends IService<Blog> {
 
     Result queryHotBlog(Integer current);
 
+    /** 最新笔记：按发布时间倒序 */
+    Result queryLatestBlog(Integer current);
+
     Result likeBlog(Long id);
 
     Result queryBlogLikes(Long id);

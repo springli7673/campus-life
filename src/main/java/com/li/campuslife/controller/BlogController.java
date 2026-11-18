@@ -50,6 +50,11 @@ public class BlogController {
         return Result.ok(records);
     }
 
+    @GetMapping("/latest")
+    public Result queryLatestBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return blogService.queryLatestBlog(current);
+    }
+
     @GetMapping("/hot")
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return blogService.queryHotBlog(current);
