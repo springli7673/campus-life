@@ -37,3 +37,6 @@ logs/
 
 # 运行时上传的图片
 uploads/
+
+# 压测临时数据（token 文件，含有效期）
+perf/

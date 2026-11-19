@@ -6,7 +6,7 @@ spring:
     name: campus-life
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/campus_life?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    url: jdbc:mysql://127.0.0.1:3306/campus_life?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
     username: root
     password: 123456
   data:
@@ -96,7 +96,10 @@ xxl:
     accessToken: default_token # 必须与 admin 侧一致
     executor:
       appname: campus-life-executor
-      ip: "" # 留空自动获取；双实例时用 --xxl.job.executor.port 区分
+      # 写死成 WSL 虚拟网卡地址：调度中心跑在 WSL 的 docker 里，
+      # 自动探测会抓到 WLAN 地址（如 172.27.x.x），容器回连不到。
+      # 重启 WSL 后地址可能变，用 ipconfig 查 vEthernet (WSL) 再改。
+      ip: ${XXL_EXECUTOR_IP:172.22.160.1}
       port: 9999
       logpath: ./logs/xxl-job
       logretentiondays: 7
